@@ -2,17 +2,17 @@
 ===============================================================================
 
   FILE:  lasinterval.cpp
-  
+
   CONTENTS:
-  
+
     see corresponding header file
-  
+
   PROGRAMMERS:
-  
+
     martin.isenburg@rapidlasso.com  -  http://rapidlasso.com
-  
+
   COPYRIGHT:
-  
+
     (c) 2011-2015, martin isenburg, rapidlasso - fast tools to catch reality
 
     This is free software; you can redistribute and/or modify it under the
@@ -21,14 +21,15 @@
 
     This software is distributed WITHOUT ANY WARRANTY and without even the
     implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-  
+
   CHANGE HISTORY:
-  
+
     see corresponding header file
-  
+
 ===============================================================================
 */
 #include "lasinterval.hpp"
+#include "laszip.hpp"
 
 #include "bytestreamin.hpp"
 #include "bytestreamout.hpp"
@@ -42,9 +43,33 @@
 #include <set>
 using namespace std;
 
+#ifdef UNORDERED
+   // Figure out whether <unordered_map> is in tr1
+#  ifdef __has_include
+#    if __has_include(<unordered_map>)
+#     include <unordered_map>
+      using namespace std;
+#     define UNORDERED_FOUND
+#    endif
+#  endif
+#  ifdef HAVE_UNORDERED_MAP
+#     include <unordered_map>
+      using namespace std;
+#  elif UNORDERED_FOUND
+#    include <tr1/unordered_map>
+    using namespace std;
+    using namespace tr1;
+#  endif
+typedef unordered_map<I32, LASintervalStartCell*> my_cell_hash;
+#elif defined(LZ_WIN32_VC6)
+#include <hash_map>
+using namespace std;
+typedef hash_map<I32, LASintervalStartCell*> my_cell_hash;
+#else
 #include <unordered_map>
 using namespace std;
-typedef unordered_map<I32, LASintervalStartCell*> my_cell_hash;
+typedef hash_map<I32, LASintervalStartCell*> my_cell_hash;
+#endif
 
 typedef multimap<U32, LASintervalCell*> my_cell_map;
 typedef set<LASintervalStartCell*> my_cell_set;
@@ -220,7 +245,17 @@ void LASinterval::merge_intervals(U32 maximum_intervals, const BOOL verbose)
   // maybe nothing to do
   if (map.size() <= maximum_intervals)
   {
-    if (verbose) fprintf(stderr,"next largest interval gap is %u\n", diff);
+    if (verbose)
+    {
+      if (map.size() == 0)
+      {
+        fprintf(stderr,"maximum_intervals: %u number of interval gaps: 0 \n", maximum_intervals);
+      }
+      else
+      {
+        fprintf(stderr,"maximum_intervals: %u number of interval gaps: %u next largest interval gap %u\n", maximum_intervals, (U32)map.size(), diff);
+      }
+    }
     return;
   }
 
